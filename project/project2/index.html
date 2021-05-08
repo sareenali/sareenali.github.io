@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Sareen Ali" />
+    
+    <link rel="shortcut icon" type="image/x-icon" href="../../img/favicon.ico">
+    <title>Project 2: Modeling, Testing, and Predicting</title>
+    <meta name="generator" content="Hugo 0.83.1" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="../../css/main.css" />
+    <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,400,200bold,400old" />
+    
+    <!--[if lt IE 9]>
+			<script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+			<script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+		<![endif]-->
+
+    
+  </head>
+
+  <body>
+    <div id="wrap">
+      
+      <nav class="navbar navbar-default">
+  <div class="container">
+    <div class="navbar-header">
+      <a class="navbar-brand" href="../../"><i class="fa fa-home"></i></a>
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <div class="navbar-collapse collapse" id="navbar">
+      <ul class="nav navbar-nav navbar-right">
+      
+        
+        <li><a href="../../post/">BLOG</a></li>
+        
+        <li><a href="../../projects/">PROJECTS</a></li>
+        
+        <li><a href="../../resume/">RESUME</a></li>
+        
+      
+      </ul>
+    </div>
+  </div>
+</nav>
+
+      <div class="container">
+        <div class="blog-post">
+          <h3>
+            <strong><a href="../../project/project2/">Project 2: Modeling, Testing, and Predicting</a></strong>
+          </h3>
+        </div>
+ 
+<div class="blog-title">
+          <h4>
+         May 7, 2021 
+            &nbsp;&nbsp;
+            
+          </h4>
+        </div>
+
+        <div class="panel panel-default">
+          <div class="panel-body">
+            <div class="blogpost">
+              
+
+
+<div id="modeling" class="section level1">
+<h1>Modeling</h1>
+</div>
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+<p>The dataset I’m going to be using is the ‘COVID-19’ dataset, in which it contains information on daily reports of COVID-19 cases and deaths in countries worldwide. This dataset is from the Official Portal for European data <a href="https://data.europa.eu/euodp/en/data/dataset/covid-19-coronavirus-data" class="uri">https://data.europa.eu/euodp/en/data/dataset/covid-19-coronavirus-data</a>. However, I got it from Github <a href="https://corgis-edu.github.io/corgis/csv/covid/" class="uri">https://corgis-edu.github.io/corgis/csv/covid/</a>. It also has the country’s population and the number of cases per 100,000 people on a rolling 14 day average. In total, there are 10 variables and 53,590 observations in this dataset.</p>
+<pre class="r"><code>library(glmnet)
+library(mvtnorm)
+
+
+covid &lt;- readr::read_csv(&quot;https://corgis-edu.github.io/corgis/datasets/csv/covid/covid.csv&quot;)
+DATA &lt;- covid %&gt;% na.omit()</code></pre>
+<p>#MANOVA</p>
+<pre class="r"><code>library(ggplot2)
+ggplot(covid, aes(x = Data.Cases, y = Data.Deaths)) + geom_point(alpha = 0.1) + 
+    geom_density_2d(h = 2) + coord_fixed() + facet_wrap(~Location.Continent)</code></pre>
+<p><img src="../../project/project2_files/figure-html/unnamed-chunk-2-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>MANC &lt;- manova(cbind(Data.Cases, Data.Deaths) ~Location.Continent, data = covid)
+summary(MANC)</code></pre>
+<pre><code>## Df Pillai approx F num Df den Df Pr(&gt;F)
+## Location.Continent 5 0.025341 137.53 10 107168 &lt; 2.2e-16
+***
+## Residuals 53584
+## ---
+## Signif. codes: 0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1
+&#39; &#39; 1</code></pre>
+<pre class="r"><code>summary.aov(MANC)</code></pre>
+<pre><code>## Response Data.Cases :
+## Df Sum Sq Mean Sq F value Pr(&gt;F)
+## Location.Continent 5 1.9729e+10 3945726185 158.77 &lt;
+2.2e-16 ***
+## Residuals 53584 1.3316e+12 24851205
+## ---
+## Signif. codes: 0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1
+&#39; &#39; 1
+##
+## Response Data.Deaths :
+## Df Sum Sq Mean Sq F value Pr(&gt;F)
+## Location.Continent 5 18507382 3701476 245.01 &lt; 2.2e-16
+***
+## Residuals 53584 809520923 15108
+## ---
+## Signif. codes: 0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1
+&#39; &#39; 1</code></pre>
+<pre class="r"><code>covid %&gt;% group_by(Location.Continent) %&gt;% summarize(mean(Data.Cases), mean(Data.Deaths))</code></pre>
+<pre><code>## # A tibble: 6 x 3
+## Location.Continent `mean(Data.Cases)`
+`mean(Data.Deaths)`
+## &lt;chr&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1 Africa 142.  3.42
+## 2 America 1796.  55.1
+## 3 Asia 1173.  20.9
+## 4 Europe 745.  18.8
+## 5 Oceania 21.5 0.522
+## 6 Other 10.9 0.109</code></pre>
+<pre class="r"><code>pairwise.t.test(covid$Data.Cases, covid$Location.Continent, p.adj = &quot;none&quot;)</code></pre>
+<pre><code>## 
+##  Pairwise comparisons using t tests with pooled SD 
+## 
+## data:  covid$Data.Cases and covid$Location.Continent 
+## 
+##         Africa  America Asia    Europe  Oceania
+## America &lt; 2e-16 -       -       -       -      
+## Asia    &lt; 2e-16 &lt; 2e-16 -       -       -      
+## Europe  &lt; 2e-16 &lt; 2e-16 3.2e-12 -       -      
+## Oceania 0.3090  &lt; 2e-16 &lt; 2e-16 7.8e-10 -      
+## Other   0.8331  0.0043  0.0630  0.2395  0.9866 
+## 
+## P value adjustment method: none</code></pre>
+<pre class="r"><code>pairwise.t.test(covid$Data.Deaths, covid$Location.Continent, p.adj = &quot;none&quot;)</code></pre>
+<pre><code>## 
+##  Pairwise comparisons using t tests with pooled SD 
+## 
+## data:  covid$Data.Deaths and covid$Location.Continent 
+## 
+##         Africa  America Asia    Europe  Oceania
+## America &lt; 2e-16 -       -       -       -      
+## Asia    &lt; 2e-16 &lt; 2e-16 -       -       -      
+## Europe  &lt; 2e-16 &lt; 2e-16 0.18089 -       -      
+## Oceania 0.32247 &lt; 2e-16 5.3e-12 2.8e-10 -      
+## Other   0.82967 0.00035 0.17802 0.22387 0.97889
+## 
+## P value adjustment method: none</code></pre>
+<pre class="r"><code># Probability of at least one type I error 
+1 - (0.95^27)</code></pre>
+<pre><code>## [1] 0.7496559</code></pre>
+<pre class="r"><code># Bonferroni Correction 
+0.05/27</code></pre>
+<pre><code>## [1] 0.001851852</code></pre>
+<p>A one-way MANOVA was conducted to determine the effect of the Location.Continent, which were Africa, America, Asia, Europe, Oceania, and other, on two dependent variables. These dependent variables were Data.Cases and Data.Deaths. Data.Cases was the number of COVID-19 cases and Data.Deaths was the number of deaths from COVID-19. According to the results from the MANOVA, there was a significant difference found between the 6 continents listed above. The Pillai trace = 0.025341, pseudo F (5,10) = 137.53, p &lt; 0.0001. Then, univariate ANOVAs were done for each dependent variable. The univariate ANOVAs for Data.Cases and Data.Deaths were both also significant. For Data.Cases, F (5, 53584) = 158.77, p &lt; 0.0001. For Data.Deaths, F (5, 53584) = 245.01, p &lt; 0.0001. Next, post hoc analysis was performed conducting pairwise comparisons to find which Location.Continent differed in Data.Cases and Data.Deaths. All of the Location.Continents differed based on these two variables.</p>
+<p>I performed 27 tests in total, 1 MANOVA, 2 ANOVAs, and 24 t tests. This is because since I had two response variables, and 6 groups (Location.Continents), there was 1 MANOVA, 2 ANOVAs, and 2*12 = 24 unique t tests. In total, it’s 27. The bonferroni significance level is α = .05/27 = 0.00185185. The probability of at least one type I error, unadjusted, is 0.7496559. Both variables were still significant after adjusting for multiple comparisons and finding the bonferroni corrected significance level.</p>
+<p>There’s several different MANOVA assumptions, some include equal covariance between two dependent variables, no extreme univariate or multivariate outliers, linear relationship among variables, no multicollinearity, and multivariate normality. It looks like there are some outliers on the graph, so more than likely, not all assumptions were met and were likely violated. The variances and covariances are different across continents, and the distributions are almost certainly not bivariate normal.</p>
+</div>
+<div id="randomization-test" class="section level1">
+<h1>Randomization Test</h1>
+<pre class="r"><code>set.seed(348)
+summary(aov(Data.Deaths ~ Location.Continent, data = covid))</code></pre>
+<pre><code>## Df Sum Sq Mean Sq F value Pr(&gt;F)
+## Location.Continent 5 18507382 3701476 245 &lt;2e-16 ***
+## Residuals 53584 809520923 15108
+## ---
+## Signif. codes: 0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1
+&#39; &#39; 1</code></pre>
+<pre class="r"><code>obs_F &lt;- 245  #this is the observed F-statistic
+Fs &lt;- replicate(5000, {
+    # do everything in curly braces 5000 times and save the
+    # output
+    new &lt;- covid %&gt;% mutate(Data.Deaths = sample(Data.Deaths))  #randomly permute response variable 
+    # compute the F-statistic by hand
+    SSW &lt;- new %&gt;% group_by(Location.Continent) %&gt;% summarize(SSW = sum((Data.Deaths - 
+        mean(Data.Deaths))^2)) %&gt;% summarize(sum(SSW)) %&gt;% pull
+    SSB &lt;- new %&gt;% mutate(mean = mean(Data.Deaths)) %&gt;% group_by(Location.Continent) %&gt;% 
+        mutate(groupmean = mean(Data.Deaths)) %&gt;% summarize(SSB = sum((mean - 
+        groupmean)^2)) %&gt;% summarize(sum(SSB)) %&gt;% pull
+    (SSB/2)/(SSW/57)  #compute F statistic (num df = K-1 = 3-1, denom df = N-K = 60-3)
+})
+hist(Fs, prob = T)
+abline(v = obs_F, col = &quot;red&quot;, add = T)</code></pre>
+<p><img src="../../project/project2_files/figure-html/unnamed-chunk-3-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>mean(Fs &gt; obs_F)</code></pre>
+<pre><code>## [1] 0</code></pre>
+<p>The null hypothesis is that the true mean of Data.Deaths is the same for all 6 Location.Continents. The alternative hypothesis is that there is a difference in the true means of Data.Deaths for the 6 Location.Continents. I conducted an ANOVA/Fstat test. The results showed that the p-value for the mean(Fs &gt; obs_F) was 0. This meant that none of my 5000 F stats created under the null hypothesis were greater in value than the actual F stat, which was 245. This means that we should reject the null hypothesis that the true mean of Data.Deaths is the same for all 6 Location.Continents. They do, in fact, differ.</p>
+</div>
+<div id="linear-regression-model" class="section level1">
+<h1>Linear Regression Model</h1>
+<pre class="r"><code>neww &lt;- covid$Data.Rate - mean(covid$Data.Rate)
+newww &lt;- covid$Date.Month - mean(covid$Date.Month)
+
+fit1 &lt;- lm(Data.Deaths ~ neww + newww, data = covid)
+summary(fit1)</code></pre>
+<pre><code>##
+## Call:
+## lm(formula = Data.Deaths ~ neww + newww, data = covid)
+##
+## Residuals:
+## Min 1Q Median 3Q Max
+## -1935.9 -17.1 -15.6 -14.4 4891.6
+##
+## Coefficients:
+## Estimate Std. Error t value Pr(&gt;|t|)
+## (Intercept) 22.881900 0.530658 43.12 &lt;2e-16 ***
+## neww 0.166493 0.004866 34.21 &lt;2e-16 ***
+## newww 0.220459 0.212017 1.04 0.298
+## ---
+## Signif. codes: 0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1
+&#39; &#39; 1
+##
+## Residual standard error: 122.8 on 53587 degrees of
+freedom
+## Multiple R-squared: 0.02338, Adjusted R-squared: 0.02334
+## F-statistic: 641.4 on 2 and 53587 DF, p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>ggplot(covid, aes(y = neww, x = newww, color = Data.Deaths)) + geom_point() +
+  geom_smooth(method = &quot;lm&quot;, se = FALSE)</code></pre>
+<p><img src="../../project/project2_files/figure-html/unnamed-chunk-6-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>qqnorm(neww, col=&#39;red&#39;)</code></pre>
+<p><img src="../../project/project2_files/figure-html/unnamed-chunk-7-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>qqnorm(newww, col=&#39;blue&#39;)</code></pre>
+<p><img src="../../project/project2_files/figure-html/unnamed-chunk-8-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>shapiro.test(head(neww))</code></pre>
+<pre><code>## 
+##  Shapiro-Wilk normality test
+## 
+## data:  head(neww)
+## W = 0.76364, p-value = 0.027</code></pre>
+<pre class="r"><code>shapiro.test(head(newww))</code></pre>
+<pre><code>## 
+##  Shapiro-Wilk normality test
+## 
+## data:  head(newww)
+## W = 0.49609, p-value = 2.073e-05</code></pre>
+<pre class="r"><code>library(lmtest)
+bptest(fit1)</code></pre>
+<pre><code>## 
+##  studentized Breusch-Pagan test
+## 
+## data:  fit1
+## BP = 246.29, df = 2, p-value &lt; 2.2e-16</code></pre>
+<pre class="r"><code>library(lmtest)
+library(sandwich)
+
+coeftest(fit1, vcov = vcovHC(fit1))</code></pre>
+<pre><code>##
+## t test of coefficients:
+##
+## Estimate Std. Error t value Pr(&gt;|t|)
+## (Intercept) 22.881900 0.530689 43.1174 &lt;2e-16 ***
+## neww 0.166493 0.008334 19.9776 &lt;2e-16 ***
+## newww 0.220459 0.182817 1.2059 0.2279
+## ---
+## Signif. codes: 0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1
+&#39; &#39; 1</code></pre>
+<pre class="r"><code>summary(fit1)$r.sq</code></pre>
+<pre><code>## [1] 0.02337767</code></pre>
+<pre class="r"><code>fitt &lt;- lm(Data.Deaths ~ Data.Rate, data = covid)
+summary(fitt)</code></pre>
+<pre><code>##
+## Call:
+## lm(formula = Data.Deaths ~ Data.Rate, data = covid)
+##
+## Residuals:
+## Min 1Q Median 3Q Max
+## -1936.2 -16.9 -15.5 -15.4 4891.0
+##
+## Coefficients:
+## Estimate Std. Error t value Pr(&gt;|t|)
+## (Intercept) 15.427614 0.570047 27.06 &lt;2e-16 ***
+## Data.Rate 0.167848 0.004688 35.80 &lt;2e-16 ***
+## ---
+## Signif. codes: 0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1
+&#39; &#39; 1
+##
+## Residual standard error: 122.8 on 53588 degrees of
+freedom
+## Multiple R-squared: 0.02336, Adjusted R-squared: 0.02334
+## F-statistic: 1282 on 1 and 53588 DF, p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>fittt &lt;- lm(Data.Deaths ~ Date.Month, data = covid)
+summary(fittt)</code></pre>
+<pre><code>##
+## Call:
+## lm(formula = Data.Deaths ~ Date.Month, data = covid)
+##
+## Residuals:
+## Min 1Q Median 3Q Max
+## -1937.8 -25.3 -19.8 -14.5 4910.3
+##
+## Coefficients:
+## Estimate Std. Error t value Pr(&gt;|t|)
+## (Intercept) 9.0288 1.4268 6.328 2.51e-10 ***
+## Date.Month 2.1635 0.2065 10.478 &lt; 2e-16 ***
+## ---
+## Signif. codes: 0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1
+&#39; &#39; 1
+##
+## Residual standard error: 124.2 on 53588 degrees of
+freedom
+## Multiple R-squared: 0.002044, Adjusted R-squared:
+0.002026
+## F-statistic: 109.8 on 1 and 53588 DF, p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>library(interactions)
+
+#interaction plot
+interact_plot(fit1, newww, neww)</code></pre>
+<p><img src="../../project/project2_files/figure-html/unnamed-chunk-15-1.png" width="768" style="display: block; margin: auto;" />
+According to the results, every one increase in Data.Deaths, the number of the Data.Rate increases by 0.166493 and the number of the Date.Month increases by 0.220459. Based on the plot made we know that the linearity assumption was not met in this case. As stated above, that’s one of the assumptions. Another assumption is the normality assumption, and I created qqplots to test this assumption. Based on the graphs, neither looks like it passes the normality assumption. They’re oddly shaped. I also did Shapiro-Wilk Tests to test for normality. The null hypothesis for the test would be that the data is normally distributed. From this, I found that the p-values were both less than alpha, 0.05, meaning that we can reject the null hypothesis. Lastly, to test for the homoskedasticity assumption, I performed the Breusch-Pagan Test. This test gave me a p-value that was less than 0.05, meaning that I can reject the null hypothesis and conclude that there’s heteroskedasticity. Looking at it with the standard errors, it looked like the t-values for Data.Rate and Date.Month both decreased, however the value for the intercept actually increased.</p>
+<p>#Bootstrapped Standard Errors</p>
+<pre class="r"><code>library(dplyr)
+
+fit&lt;-lm(Data.Deaths~Data.Rate+Date.Month,data=covid) #fit model
+boot_sd &lt;- covid[sample(nrow(covid), replace = T), ]
+samp_distn &lt;- replicate(5000, {
+    boot_sd &lt;- covid[sample(nrow(covid), replace = T), ]
+    fit2 &lt;- lm(Data.Deaths ~ Data.Rate + Date.Month, data = boot_sd)
+    coef(fit2)
+})
+samp_distn %&gt;% t %&gt;% as.data.frame %&gt;% summarize_all(sd)</code></pre>
+<pre><code>##   (Intercept)   Data.Rate Date.Month
+## 1    1.225784 0.008288571  0.1810893</code></pre>
+<pre class="r"><code>summary(fit)</code></pre>
+<pre><code>##
+## Call:
+## lm(formula = Data.Deaths ~ Data.Rate + Date.Month, data
+= covid)
+##
+## Residuals:
+## Min 1Q Median 3Q Max
+## -1935.9 -17.1 -15.6 -14.4 4891.6
+##
+## Coefficients:
+## Estimate Std. Error t value Pr(&gt;|t|)
+## (Intercept) 14.076171 1.419211 9.918 &lt;2e-16 ***
+## Data.Rate 0.166493 0.004866 34.213 &lt;2e-16 ***
+## Date.Month 0.220459 0.212017 1.040 0.298
+## ---
+## Signif. codes: 0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1
+&#39; &#39; 1
+##
+## Residual standard error: 122.8 on 53587 degrees of
+freedom
+## Multiple R-squared: 0.02338, Adjusted R-squared: 0.02334
+## F-statistic: 641.4 on 2 and 53587 DF, p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>coeftest(fit, vcov = vcovHC(fit))</code></pre>
+<pre><code>##
+## t test of coefficients:
+##
+## Estimate Std. Error t value Pr(&gt;|t|)
+## (Intercept) 14.076171 1.225965 11.4817 &lt;2e-16 ***
+## Data.Rate 0.166493 0.008334 19.9776 &lt;2e-16 ***
+## Date.Month 0.220459 0.182817 1.2059 0.2279
+## ---
+## Signif. codes: 0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1
+&#39; &#39; 1</code></pre>
+<p>According to the results, the SEs for the uncorrected for the intercept seems to be a bit higher than for the corrected. The SEs for the uncorrected Data.Rate seems to be a bit lower. Lastly, the SEs for the uncorrected for the Date.Month seemed to be a bit higher than for the corrected SEs. In comparing the p-values, I saw that the only p-value that was different among the two was the Date.Month p-value. Not a huge difference, though.</p>
+</div>
+<div id="logistic-regression-model" class="section level1">
+<h1>Logistic Regression Model</h1>
+<pre class="r"><code>covid$y &lt;- ifelse(covid$Date.Year == &quot;2020&quot;, 1, 0)
+fit2 &lt;- glm(y ~ Data.Population + Data.Cases, data = covid, family = &quot;binomial&quot;)
+coeftest(fit2)</code></pre>
+<pre><code>##
+## z test of coefficients:
+##
+## Estimate Std. Error z value Pr(&gt;|z|)
+## (Intercept) 6.5844e+00 1.2904e-01 51.0277 &lt; 2.2e-16 ***
+## Data.Population -1.2777e-09 4.1107e-10 -3.1083 0.001882
+**
+## Data.Cases 9.4082e-04 2.4152e-04 3.8954 9.803e-05 ***
+## ---
+## Signif. codes: 0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1
+&#39; &#39; 1</code></pre>
+<pre class="r"><code>exp(coef(fit2))</code></pre>
+<pre><code>##     (Intercept) Data.Population      Data.Cases 
+##      723.694219        1.000000        1.000941</code></pre>
+<pre class="r"><code>covid$prob &lt;- predict(fit2, type = &quot;response&quot;)
+table(predict = as.numeric(covid$prob &gt; 0.5), truth = covid$y) %&gt;% addmargins()</code></pre>
+<pre><code>##        truth
+## predict     0     1   Sum
+##     0       0     1     1
+##     1      67 53522 53589
+##     Sum    67 53523 53590</code></pre>
+<pre class="r"><code># TPR 
+53522/53523 </code></pre>
+<pre><code>## [1] 0.9999813</code></pre>
+<pre class="r"><code># PPV 
+53522/53589</code></pre>
+<pre><code>## [1] 0.9987497</code></pre>
+<pre class="r"><code># TNR 
+0/67</code></pre>
+<pre><code>## [1] 0</code></pre>
+<pre class="r"><code>class_diag &lt;- function(probs, truth) {
+    # CONFUSION MATRIX: CALCULATE ACCURACY, TPR, TNR, PPV
+    
+    if (is.character(truth) == TRUE) 
+        truth &lt;- as.factor(truth)
+    if (is.numeric(truth) == FALSE &amp; is.logical(truth) == FALSE) 
+        truth &lt;- as.numeric(truth) - 1
+    
+    tab &lt;- table(factor(probs &gt; 0.5, levels = c(&quot;FALSE&quot;, &quot;TRUE&quot;)), 
+        factor(truth, levels = c(0, 1)))
+    acc = sum(diag(tab))/sum(tab)
+    sens = tab[2, 2]/colSums(tab)[2]
+    spec = tab[1, 1]/colSums(tab)[1]
+    ppv = tab[2, 2]/rowSums(tab)[2]
+    f1 = 2 * (sens * ppv)/(sens + ppv)
+    
+    # CALCULATE EXACT AUC
+    ord &lt;- order(probs, decreasing = TRUE)
+    probs &lt;- probs[ord]
+    truth &lt;- truth[ord]
+    
+    TPR = cumsum(truth)/max(1, sum(truth))
+    FPR = cumsum(!truth)/max(1, sum(!truth))
+    
+    dup &lt;- c(probs[-1] &gt;= probs[-length(probs)], FALSE)
+    TPR &lt;- c(0, TPR[!dup], 1)
+    FPR &lt;- c(0, FPR[!dup], 1)
+    n &lt;- length(TPR)
+    auc &lt;- sum(((TPR[-1] + TPR[-n])/2) * (FPR[-1] - FPR[-n]))
+    
+    data.frame(acc, sens, spec, ppv, f1, auc)
+}
+probss &lt;- predict(fit2, type = &quot;response&quot;)
+class_diag(probss, covid$y)</code></pre>
+<pre><code>##         acc      sens spec       ppv        f1       auc
+## 1 0.9987311 0.9999813    0 0.9987497 0.9993652 0.8540222</code></pre>
+<pre class="r"><code>covid$logit &lt;- predict(fit2, type = &quot;link&quot;)
+
+covid %&gt;% ggplot() + geom_density(aes(logit, fill = as.factor(Date.Year)), alpha = 0.4) + theme(legend.position = c(0.85, 0.85)) + geom_vline(xintercept = 0) + xlab(&quot;logit (log-odds)&quot;) + xlim(0, 10)</code></pre>
+<p><img src="../../project/project2_files/figure-html/unnamed-chunk-20-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>library(plotROC)
+# ROCCurve
+ROCplot &lt;- ggplot(covid) + geom_roc(aes(d = y, m = prob), 
+    n.cuts = 0) + geom_segment(aes(x = 0, xend = 1, y = 0, yend = 1), 
+    lty = 2)
+ROCplot</code></pre>
+<p><img src="../../project/project2_files/figure-html/unnamed-chunk-20-2.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>calc_auc(ROCplot)</code></pre>
+<pre><code>##   PANEL group      AUC
+## 1     1    -1 0.854495</code></pre>
+<p>According to the results, the logistic regression model showed that the odds of year 2020 when Data.Population and Data.Cases both equal 0 is 723.694. For every additional unit increase in Data.Population, while controlling for the year and Data.Cases, the odds of it being the year 2020 increases by about 1. Now, when controlling for Data.Population, the odds of it being the year 2020 increases by about 1.000941. The specificity was 0, the sensitivity was ~0.99, and the precision was ~0.99. The accuracy was ~0.99 as well. The AUC came out to be 0.85, which isn’t bad. From the ROC plot, the AUC calculated was ~0.85, meaning that the model was not so bad.</p>
+</div>
+<div id="logistic-regression-binary" class="section level1">
+<h1>Logistic Regression Binary</h1>
+<pre class="r"><code>#Log regression with more variables 
+newcovid &lt;- covid%&gt;%mutate(y = ifelse(Date.Year == &quot;2020&quot;, 1, 0))
+newcovid2 &lt;- newcovid %&gt;% select(-Date.Day, -Location.Country, -Location.Code, -prob, -logit)
+log_reg_all &lt;- glm(y~., data=newcovid2, family = &quot;binomial&quot;)
+prob2 &lt;- predict(log_reg_all)
+coeftest(log_reg_all)</code></pre>
+<pre><code>##
+## z test of coefficients:
+##
+## Estimate Std. Error z value Pr(&gt;|z|)
+## (Intercept) -1.0730e+05 8.8356e+07 -0.0012 0.999
+## Date.Month 2.2488e-08 6.3140e+02 0.0000 1.000
+## Date.Year 5.3132e+01 4.3740e+04 0.0012 0.999
+## Data.Cases -9.7591e-13 4.7166e-01 0.0000 1.000
+## Data.Deaths 6.2465e-11 1.8175e+01 0.0000 1.000
+## Data.Population 4.8518e-17 1.1198e-05 0.0000 1.000
+## Location.ContinentAmerica 3.2391e-08 4.6290e+03 0.0000
+1.000
+## Location.ContinentAsia -5.7948e-08 4.6860e+03 0.0000
+1.000
+## Location.ContinentEurope 3.4311e-08 4.4145e+03 0.0000
+1.000
+## Location.ContinentOceania 2.0375e-08 8.5067e+03 0.0000
+1.000
+## Location.ContinentOther 3.0365e-07 4.4751e+04 0.0000
+1.000
+## Data.Rate -2.6122e-10 1.4784e+01 0.0000 1.000</code></pre>
+<pre class="r"><code>exp(coef(log_reg_all))</code></pre>
+<pre><code>## (Intercept) Date.Month Date.Year
+## 0.000000e+00 1.000000e+00 1.188481e+23
+## Data.Cases Data.Deaths Data.Population
+## 1.000000e+00 1.000000e+00 1.000000e+00
+## Location.ContinentAmerica Location.ContinentAsia
+Location.ContinentEurope
+## 1.000000e+00 9.999999e-01 1.000000e+00
+## Location.ContinentOceania Location.ContinentOther
+Data.Rate
+## 1.000000e+00 1.000000e+00 1.000000e+00</code></pre>
+<pre class="r"><code>class_diag &lt;- function(probs, truth) {
+    # CONFUSION MATRIX: CALCULATE ACCURACY, TPR, TNR, PPV
+    
+    if (is.character(truth) == TRUE) 
+        truth &lt;- as.factor(truth)
+    if (is.numeric(truth) == FALSE &amp; is.logical(truth) == FALSE) 
+        truth &lt;- as.numeric(truth) - 1
+    
+    tab &lt;- table(factor(probs &gt; 0.5, levels = c(&quot;FALSE&quot;, &quot;TRUE&quot;)), 
+        factor(truth, levels = c(0, 1)))
+    acc = sum(diag(tab))/sum(tab)
+    sens = tab[2, 2]/colSums(tab)[2]
+    spec = tab[1, 1]/colSums(tab)[1]
+    ppv = tab[2, 2]/rowSums(tab)[2]
+    f1 = 2 * (sens * ppv)/(sens + ppv)
+    
+    # CALCULATE EXACT AUC
+    ord &lt;- order(probs, decreasing = TRUE)
+    probs &lt;- probs[ord]
+    truth &lt;- truth[ord]
+    
+    TPR = cumsum(truth)/max(1, sum(truth))
+    FPR = cumsum(!truth)/max(1, sum(!truth))
+    
+    dup &lt;- c(probs[-1] &gt;= probs[-length(probs)], FALSE)
+    TPR &lt;- c(0, TPR[!dup], 1)
+    FPR &lt;- c(0, FPR[!dup], 1)
+    n &lt;- length(TPR)
+    auc &lt;- sum(((TPR[-1] + TPR[-n])/2) * (FPR[-1] - FPR[-n]))
+    
+    data.frame(acc, sens, spec, ppv, f1, auc)
+}
+truth = newcovid2$y
+class_diag(prob2, truth)</code></pre>
+<pre><code>##   acc sens spec ppv f1 auc
+## 1   1    1    1   1  1   1</code></pre>
+<pre class="r"><code>table(prediction=as.numeric(prob2&gt;.5), truth) %&gt;% addmargins()</code></pre>
+<pre><code>##           truth
+## prediction     0     1   Sum
+##        0      67     0    67
+##        1       0 53523 53523
+##        Sum    67 53523 53590</code></pre>
+<pre class="r"><code>#10 fold 
+set.seed(1234)
+k = 10
+
+CV &lt;- newcovid2[sample(nrow(newcovid2)),]
+folds&lt;- cut(seq(1:nrow(newcovid2)), breaks=k,labels=F)
+
+diags &lt;- NULL
+for (i in 1:k) {
+    train &lt;- CV[folds != i, ]  #create training set (all but fold i)
+    test &lt;- CV[folds == i, ]  #create test set (just fold i)
+    truth1 &lt;- test$y  #save truth labels from fold i
+    fitCV &lt;- glm(y ~., data = train, 
+        family = &quot;binomial&quot;)
+    probsCV &lt;- predict(fitCV, newdata = test, type = &quot;response&quot;)
+    diags &lt;- rbind(diags, class_diag(probsCV, truth1))
+}
+diags %&gt;% summarize_all(mean)</code></pre>
+<pre><code>##   acc sens spec ppv f1 auc
+## 1   1    1    1   1  1   1</code></pre>
+<pre class="r"><code>#LASSO 
+library(glmnet)
+set.seed(1234)
+y&lt;-as.matrix(newcovid2$Date.Year)
+newcovid2 &lt;- newcovid %&gt;% select(-Date.Day, -Location.Country, -Location.Code, -prob, -logit)
+x &lt;- model.matrix(Date.Year~.,data=newcovid2)[,-1]
+head(x)</code></pre>
+<pre><code>## Date.Month Data.Cases Data.Deaths Data.Population
+Location.ContinentAmerica
+## 1 11 121 6 38041757 0
+## 2 11 86 4 38041757 0
+## 3 11 95 3 38041757 0
+## 4 11 132 5 38041757 0
+## 5 11 76 0 38041757 0
+## 6 10 157 4 38041757 0
+## Location.ContinentAsia Location.ContinentEurope
+Location.ContinentOceania Location.ContinentOther
+## 1 1 0 0 0
+## 2 1 0 0 0
+## 3 1 0 0 0
+## 4 1 0 0 0
+## 5 1 0 0 0
+## 6 1 0 0 0
+## Data.Rate y
+## 1 3.745884 1
+## 2 3.782685 1
+## 3 3.787943 1
+## 4 3.766913 1
+## 5 3.575019 1
+## 6 3.553989 1</code></pre>
+<pre class="r"><code>x&lt;-scale(x)
+cv &lt;- cv.glmnet(x,y, family = &quot;binomial&quot;)
+lasso&lt;-glmnet(x,y,family=&quot;binomial&quot;,lambda=cv$lambda.1se)
+coef(lasso)</code></pre>
+<pre><code>## 12 x 1 sparse Matrix of class &quot;dgCMatrix&quot;
+##                                 s0
+## (Intercept)               6.683174
+## Date.Month                0.000000
+## Data.Cases                .       
+## Data.Deaths               .       
+## Data.Population           .       
+## Location.ContinentAmerica .       
+## Location.ContinentAsia    .       
+## Location.ContinentEurope  .       
+## Location.ContinentOceania .       
+## Location.ContinentOther   .       
+## Data.Rate                 .       
+## y                         .</code></pre>
+<pre class="r"><code>#10 fold cv
+#set.seed(1234)
+#k = 10
+#NEW&lt;-newcovid2 %&gt;% sample_frac
+#folds &lt;- ntile(1:nrow(NEW), n=10)
+
+
+#diags &lt;- NULL
+#for (i in 1:k) {
+    #train &lt;- NEW[folds != i, ]  #create training set (all but fold i)
+    #test &lt;- NEW[folds == i, ]  #create test set (just fold i)
+    #truth2 &lt;- test$Date.Year  #save truth labels from fold i
+    #fit10 &lt;- glm(Date.Year ~ Date.Month, data = train, 
+        #family = &quot;binomial&quot;)
+    #probs10 &lt;- predict(fit10, newdata = test, type = &quot;response&quot;)
+    #diags &lt;- rbind(diags, class_diag(probs10, truth2))
+#}
+#diags %&gt;% summarize_all(mean)</code></pre>
+<p>According to the results, the logistic regression using the binary variable got acc of 1, sensitivity value of 1, specificity of 1, and PPV of 1. The 10 fold CV models were the same. The one variable that was retained was Date.Month.</p>
+</div>
+
+            
+        <hr>         <div class="related-posts">
+                <h5>Related Posts</h5>
+                
+              </div> 
+            </div>
+          </div>
+
+   <hr>  <div class="disqus">
+  <div id="disqus_thread"></div>
+  <script type="text/javascript">
+
+    (function() {
+      
+      
+      if (window.location.hostname == "localhost")
+        return;
+
+      var disqus_shortname = '';
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  <a href="http://disqus.com/" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div> 
+        </div>
+      </div>
+    </div>
+
+    
+    <footer>
+  <div id="footer">
+    <div class="container">
+      <p class="text-muted">&copy; All rights reserved. Powered by <a href="https://gohugo.io/">Hugo</a> and
+      <a href="http://www.github.com/nurlansu/hugo-sustain/">sustain</a> with ♥</p>
+    </div>
+  </div>
+</footer>
+<div class="footer"></div>
+
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+<script src="../../js/docs.min.js"></script>
+<script src="../../js/main.js"></script>
+
+<script src="../../js/ie10-viewport-bug-workaround.js"></script>
+
+
+    
+  </body>
+</html>

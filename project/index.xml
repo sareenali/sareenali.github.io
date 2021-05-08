@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Projects on Sareen Ali</title>
+    <link>/project/</link>
+    <description>Recent content in Projects on Sareen Ali</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-US</language>
+    <lastBuildDate>Fri, 07 May 2021 00:00:00 +0000</lastBuildDate><atom:link href="/project/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Project 2: Modeling, Testing, and Predicting</title>
+      <link>/project/project2/</link>
+      <pubDate>Fri, 07 May 2021 00:00:00 +0000</pubDate>
+      
+      <guid>/project/project2/</guid>
+      <description>Modeling  Introduction The dataset I’m going to be using is the ‘COVID-19’ dataset, in which it contains information on daily reports of COVID-19 cases and deaths in countries worldwide. This dataset is from the Official Portal for European data https://data.europa.eu/euodp/en/data/dataset/covid-19-coronavirus-data. However, I got it from Github https://corgis-edu.github.io/corgis/csv/covid/. It also has the country’s population and the number of cases per 100,000 people on a rolling 14 day average. In total, there are 10 variables and 53,590 observations in this dataset.</description>
+    </item>
+    
+    <item>
+      <title>Project 1: Exploratory Data Analysis</title>
+      <link>/project/project1/</link>
+      <pubDate>Tue, 06 Apr 2021 00:00:00 +0000</pubDate>
+      
+      <guid>/project/project1/</guid>
+      <description>What data did I use?
+# Data library(tidyverse) library(readr) state_population &amp;lt;- read_csv(&amp;quot;https://raw.githubusercontent.com/jakevdp/data-USstates/master/state-population.csv&amp;quot;) key &amp;lt;- read_csv(&amp;quot;https://raw.githubusercontent.com/jasonong/List-of-US-States/master/states.csv&amp;quot;) good &amp;lt;- full_join(key, state_population, by = c(Abbreviation = &amp;quot;state/region&amp;quot;)) state_areas &amp;lt;- read_csv(&amp;quot;https://raw.githubusercontent.com/jakevdp/data-USstates/master/state-areas.csv&amp;quot;) # Joining Datasets MERGED &amp;lt;- full_join(good, state_areas, by = c(State = &amp;quot;state&amp;quot;)) # To join my two datasets, I used the dplyr join function # &amp;#39;full join&amp;#39;. I chose to use full join because I didn&amp;#39;t want # any rows dropped and for all of the original data to be # retained.</description>
+    </item>
+    
+  </channel>
+</rss>

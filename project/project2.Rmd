@@ -1,0 +1,369 @@
+---
+title: 'Project 2: Modeling, Testing, and Predicting'
+author: "Sareen Ali"
+date: '2021-05-07'
+output:
+  html_document:
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+hook_output = knit_hooks$get('output')
+knit_hooks$set(output = function(x, options) {
+  # this hook is used only when the linewidth option is not NULL
+  if (!is.null(n <- options$linewidth)) {
+    x = knitr:::split_lines(x)
+    # any lines wider than n should be wrapped
+    if (any(nchar(x) > n)) x = strwrap(x, width = n)
+    x = paste(x, collapse = '\n')
+  }
+  hook_output(x, options)
+})
+
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE,fig.align="center",warning=FALSE,message=FALSE,fig.width=8, fig.height=5, linewidth=60)
+options(tibble.width = 100,width = 100)
+library(tidyverse)
+```
+
+# Modeling 
+
+# Introduction 
+The dataset I'm going to be using is the 'COVID-19' dataset, in which it contains information on daily reports of COVID-19 cases and deaths in countries worldwide. This dataset is from the Official Portal for European data https://data.europa.eu/euodp/en/data/dataset/covid-19-coronavirus-data. However, I got it from Github https://corgis-edu.github.io/corgis/csv/covid/. It also has the country's population and the number of cases per 100,000 people on a rolling 14 day average. In total, there are 10 variables and 53,590 observations in this dataset. 
+
+```{r}
+library(glmnet)
+library(mvtnorm)
+
+
+covid <- readr::read_csv("https://corgis-edu.github.io/corgis/datasets/csv/covid/covid.csv")
+DATA <- covid %>% na.omit()
+
+
+```
+
+
+#MANOVA
+
+```{r}
+library(ggplot2)
+ggplot(covid, aes(x = Data.Cases, y = Data.Deaths)) + geom_point(alpha = 0.1) + 
+    geom_density_2d(h = 2) + coord_fixed() + facet_wrap(~Location.Continent)
+
+MANC <- manova(cbind(Data.Cases, Data.Deaths) ~Location.Continent, data = covid)
+summary(MANC)
+summary.aov(MANC)
+
+covid %>% group_by(Location.Continent) %>% summarize(mean(Data.Cases), mean(Data.Deaths))
+
+pairwise.t.test(covid$Data.Cases, covid$Location.Continent, p.adj = "none")
+
+pairwise.t.test(covid$Data.Deaths, covid$Location.Continent, p.adj = "none")
+
+# Probability of at least one type I error 
+1 - (0.95^27)
+
+# Bonferroni Correction 
+0.05/27
+```
+A one-way MANOVA was conducted to determine the effect of the Location.Continent, which were Africa, America, Asia, Europe, Oceania, and other, on two dependent variables. These dependent variables were Data.Cases and Data.Deaths. Data.Cases was the number of COVID-19 cases and Data.Deaths was the number of deaths from COVID-19. According to the results from the MANOVA, there was a significant difference found between the 6 continents listed above. The Pillai trace = 0.025341, pseudo F (5,10) = 137.53, p < 0.0001. Then, univariate ANOVAs were done for each dependent variable. The univariate ANOVAs for Data.Cases and Data.Deaths were both also significant. For Data.Cases, F (5, 53584) = 158.77, p < 0.0001. For Data.Deaths, F (5, 53584) = 245.01, p < 0.0001. Next, post hoc analysis was performed conducting pairwise comparisons to find which Location.Continent differed in Data.Cases and Data.Deaths. All of the Location.Continents differed based on these two variables. 
+
+I performed 27 tests in total, 1 MANOVA, 2 ANOVAs, and 24 t tests. This is because since I had two response variables, and 6 groups (Location.Continents), there was 1 MANOVA, 2 ANOVAs, and 2*12 = 24 unique t tests. In total, it's 27. The bonferroni significance level is α = .05/27 = 0.00185185. The probability of at least one type I error, unadjusted, is 0.7496559. Both variables were still significant after adjusting for multiple comparisons and finding the bonferroni corrected significance level.  
+
+There's several different MANOVA assumptions, some include equal covariance between two dependent variables, no extreme univariate or multivariate outliers, linear relationship among variables, no multicollinearity, and multivariate normality. It looks like there are some outliers on the graph, so more than likely, not all assumptions were met and were likely violated. The variances and covariances are different across continents, and the distributions are almost certainly not bivariate normal. 
+
+# Randomization Test 
+
+```{r}
+set.seed(348)
+summary(aov(Data.Deaths ~ Location.Continent, data = covid))
+obs_F <- 245  #this is the observed F-statistic
+Fs <- replicate(5000, {
+    # do everything in curly braces 5000 times and save the
+    # output
+    new <- covid %>% mutate(Data.Deaths = sample(Data.Deaths))  #randomly permute response variable 
+    # compute the F-statistic by hand
+    SSW <- new %>% group_by(Location.Continent) %>% summarize(SSW = sum((Data.Deaths - 
+        mean(Data.Deaths))^2)) %>% summarize(sum(SSW)) %>% pull
+    SSB <- new %>% mutate(mean = mean(Data.Deaths)) %>% group_by(Location.Continent) %>% 
+        mutate(groupmean = mean(Data.Deaths)) %>% summarize(SSB = sum((mean - 
+        groupmean)^2)) %>% summarize(sum(SSB)) %>% pull
+    (SSB/2)/(SSW/57)  #compute F statistic (num df = K-1 = 3-1, denom df = N-K = 60-3)
+})
+hist(Fs, prob = T)
+abline(v = obs_F, col = "red", add = T)
+
+
+```
+
+```{r}
+mean(Fs > obs_F)
+```
+The null hypothesis is that the true mean of Data.Deaths is the same for all 6 Location.Continents. The alternative hypothesis is that there is a difference in the true means of Data.Deaths for the 6 Location.Continents. I conducted an ANOVA/Fstat test. The results showed that the p-value for the mean(Fs > obs_F) was 0. This meant that none of my 5000 F stats created under the null hypothesis were greater in value than the actual F stat, which was 245. This means that we should reject the null hypothesis that the true mean of Data.Deaths is the same for all 6 Location.Continents. They do, in fact, differ. 
+
+# Linear Regression Model 
+
+```{r}
+neww <- covid$Data.Rate - mean(covid$Data.Rate)
+newww <- covid$Date.Month - mean(covid$Date.Month)
+
+fit1 <- lm(Data.Deaths ~ neww + newww, data = covid)
+summary(fit1)
+```
+
+```{r}
+ggplot(covid, aes(y = neww, x = newww, color = Data.Deaths)) + geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
+```{r}
+qqnorm(neww, col='red')
+```
+```{r}
+qqnorm(newww, col='blue')
+```
+```{r}
+shapiro.test(head(neww))
+
+shapiro.test(head(newww))
+```
+
+```{r}
+library(lmtest)
+bptest(fit1)
+```
+```{r}
+library(lmtest)
+library(sandwich)
+
+coeftest(fit1, vcov = vcovHC(fit1))
+```
+```{r}
+summary(fit1)$r.sq
+```
+```{r}
+fitt <- lm(Data.Deaths ~ Data.Rate, data = covid)
+summary(fitt)
+```
+```{r}
+fittt <- lm(Data.Deaths ~ Date.Month, data = covid)
+summary(fittt)
+```
+```{r}
+library(interactions)
+
+#interaction plot
+interact_plot(fit1, newww, neww)
+```
+According to the results, every one increase in Data.Deaths, the number of the Data.Rate increases by 0.166493 and the number of the Date.Month increases by 0.220459. Based on the plot made we know that the linearity assumption was not met in this case. As stated above, that's one of the assumptions. Another assumption is the normality assumption, and I created qqplots to test this assumption. Based on the graphs, neither looks like it passes the normality assumption. They're oddly shaped. I also did Shapiro-Wilk Tests to test for normality. The null hypothesis for the test would be that the data is normally distributed. From this, I found that the p-values were both less than alpha, 0.05, meaning that we can reject the null hypothesis. Lastly, to test for the homoskedasticity assumption, I performed the Breusch-Pagan Test. This test gave me a p-value that was less than 0.05, meaning that I can reject the null hypothesis and conclude that there's heteroskedasticity. Looking at it with the standard errors, it looked like the t-values for Data.Rate and Date.Month both decreased, however the value for the intercept actually increased. 
+
+#Bootstrapped Standard Errors 
+
+```{r}
+library(dplyr)
+
+fit<-lm(Data.Deaths~Data.Rate+Date.Month,data=covid) #fit model
+boot_sd <- covid[sample(nrow(covid), replace = T), ]
+samp_distn <- replicate(5000, {
+    boot_sd <- covid[sample(nrow(covid), replace = T), ]
+    fit2 <- lm(Data.Deaths ~ Data.Rate + Date.Month, data = boot_sd)
+    coef(fit2)
+})
+samp_distn %>% t %>% as.data.frame %>% summarize_all(sd)
+
+summary(fit)
+
+coeftest(fit, vcov = vcovHC(fit))
+
+```
+According to the results, the SEs for the uncorrected for the intercept seems to be a bit higher than for the corrected. The SEs for the uncorrected Data.Rate seems to be a bit lower. Lastly, the SEs for the uncorrected for the Date.Month seemed to be a bit higher than for the corrected SEs. In comparing the p-values, I saw that the only p-value that was different among the two was the Date.Month p-value. Not a huge difference, though.    
+
+# Logistic Regression Model 
+
+```{r}
+covid$y <- ifelse(covid$Date.Year == "2020", 1, 0)
+fit2 <- glm(y ~ Data.Population + Data.Cases, data = covid, family = "binomial")
+coeftest(fit2)
+
+exp(coef(fit2))
+
+covid$prob <- predict(fit2, type = "response")
+table(predict = as.numeric(covid$prob > 0.5), truth = covid$y) %>% addmargins()
+
+
+```
+
+```{r}
+# TPR 
+53522/53523 
+
+# PPV 
+53522/53589
+
+# TNR 
+0/67
+```
+```{r}
+class_diag <- function(probs, truth) {
+    # CONFUSION MATRIX: CALCULATE ACCURACY, TPR, TNR, PPV
+    
+    if (is.character(truth) == TRUE) 
+        truth <- as.factor(truth)
+    if (is.numeric(truth) == FALSE & is.logical(truth) == FALSE) 
+        truth <- as.numeric(truth) - 1
+    
+    tab <- table(factor(probs > 0.5, levels = c("FALSE", "TRUE")), 
+        factor(truth, levels = c(0, 1)))
+    acc = sum(diag(tab))/sum(tab)
+    sens = tab[2, 2]/colSums(tab)[2]
+    spec = tab[1, 1]/colSums(tab)[1]
+    ppv = tab[2, 2]/rowSums(tab)[2]
+    f1 = 2 * (sens * ppv)/(sens + ppv)
+    
+    # CALCULATE EXACT AUC
+    ord <- order(probs, decreasing = TRUE)
+    probs <- probs[ord]
+    truth <- truth[ord]
+    
+    TPR = cumsum(truth)/max(1, sum(truth))
+    FPR = cumsum(!truth)/max(1, sum(!truth))
+    
+    dup <- c(probs[-1] >= probs[-length(probs)], FALSE)
+    TPR <- c(0, TPR[!dup], 1)
+    FPR <- c(0, FPR[!dup], 1)
+    n <- length(TPR)
+    auc <- sum(((TPR[-1] + TPR[-n])/2) * (FPR[-1] - FPR[-n]))
+    
+    data.frame(acc, sens, spec, ppv, f1, auc)
+}
+probss <- predict(fit2, type = "response")
+class_diag(probss, covid$y)
+```
+```{r}
+covid$logit <- predict(fit2, type = "link")
+
+covid %>% ggplot() + geom_density(aes(logit, fill = as.factor(Date.Year)), alpha = 0.4) + theme(legend.position = c(0.85, 0.85)) + geom_vline(xintercept = 0) + xlab("logit (log-odds)") + xlim(0, 10)
+    
+
+library(plotROC)
+# ROCCurve
+ROCplot <- ggplot(covid) + geom_roc(aes(d = y, m = prob), 
+    n.cuts = 0) + geom_segment(aes(x = 0, xend = 1, y = 0, yend = 1), 
+    lty = 2)
+ROCplot
+
+calc_auc(ROCplot)
+```
+
+According to the results, the logistic regression model showed that the odds of year 2020 when Data.Population and Data.Cases both equal 0 is 723.694. For every additional unit increase in Data.Population, while controlling for the year and Data.Cases, the odds of it being the year 2020 increases by about 1. Now, when controlling for Data.Population, the odds of it being the year 2020 increases by about 1.000941. The specificity was 0, the sensitivity was ~0.99, and the precision was ~0.99. The accuracy was ~0.99 as well. The AUC came out to be 0.85, which isn't bad. From the ROC plot, the AUC calculated was ~0.85, meaning that the model was not so bad. 
+
+# Logistic Regression Binary 
+
+```{r}
+#Log regression with more variables 
+newcovid <- covid%>%mutate(y = ifelse(Date.Year == "2020", 1, 0))
+newcovid2 <- newcovid %>% select(-Date.Day, -Location.Country, -Location.Code, -prob, -logit)
+log_reg_all <- glm(y~., data=newcovid2, family = "binomial")
+prob2 <- predict(log_reg_all)
+coeftest(log_reg_all)
+exp(coef(log_reg_all))
+
+class_diag <- function(probs, truth) {
+    # CONFUSION MATRIX: CALCULATE ACCURACY, TPR, TNR, PPV
+    
+    if (is.character(truth) == TRUE) 
+        truth <- as.factor(truth)
+    if (is.numeric(truth) == FALSE & is.logical(truth) == FALSE) 
+        truth <- as.numeric(truth) - 1
+    
+    tab <- table(factor(probs > 0.5, levels = c("FALSE", "TRUE")), 
+        factor(truth, levels = c(0, 1)))
+    acc = sum(diag(tab))/sum(tab)
+    sens = tab[2, 2]/colSums(tab)[2]
+    spec = tab[1, 1]/colSums(tab)[1]
+    ppv = tab[2, 2]/rowSums(tab)[2]
+    f1 = 2 * (sens * ppv)/(sens + ppv)
+    
+    # CALCULATE EXACT AUC
+    ord <- order(probs, decreasing = TRUE)
+    probs <- probs[ord]
+    truth <- truth[ord]
+    
+    TPR = cumsum(truth)/max(1, sum(truth))
+    FPR = cumsum(!truth)/max(1, sum(!truth))
+    
+    dup <- c(probs[-1] >= probs[-length(probs)], FALSE)
+    TPR <- c(0, TPR[!dup], 1)
+    FPR <- c(0, FPR[!dup], 1)
+    n <- length(TPR)
+    auc <- sum(((TPR[-1] + TPR[-n])/2) * (FPR[-1] - FPR[-n]))
+    
+    data.frame(acc, sens, spec, ppv, f1, auc)
+}
+truth = newcovid2$y
+class_diag(prob2, truth)
+
+table(prediction=as.numeric(prob2>.5), truth) %>% addmargins()
+
+#10 fold 
+set.seed(1234)
+k = 10
+
+CV <- newcovid2[sample(nrow(newcovid2)),]
+folds<- cut(seq(1:nrow(newcovid2)), breaks=k,labels=F)
+
+diags <- NULL
+for (i in 1:k) {
+    train <- CV[folds != i, ]  #create training set (all but fold i)
+    test <- CV[folds == i, ]  #create test set (just fold i)
+    truth1 <- test$y  #save truth labels from fold i
+    fitCV <- glm(y ~., data = train, 
+        family = "binomial")
+    probsCV <- predict(fitCV, newdata = test, type = "response")
+    diags <- rbind(diags, class_diag(probsCV, truth1))
+}
+diags %>% summarize_all(mean)
+
+#LASSO 
+library(glmnet)
+set.seed(1234)
+y<-as.matrix(newcovid2$Date.Year)
+newcovid2 <- newcovid %>% select(-Date.Day, -Location.Country, -Location.Code, -prob, -logit)
+x <- model.matrix(Date.Year~.,data=newcovid2)[,-1]
+head(x)
+
+x<-scale(x)
+cv <- cv.glmnet(x,y, family = "binomial")
+lasso<-glmnet(x,y,family="binomial",lambda=cv$lambda.1se)
+coef(lasso)
+
+#10 fold cv
+#set.seed(1234)
+#k = 10
+#NEW<-newcovid2 %>% sample_frac
+#folds <- ntile(1:nrow(NEW), n=10)
+
+
+#diags <- NULL
+#for (i in 1:k) {
+    #train <- NEW[folds != i, ]  #create training set (all but fold i)
+    #test <- NEW[folds == i, ]  #create test set (just fold i)
+    #truth2 <- test$Date.Year  #save truth labels from fold i
+    #fit10 <- glm(Date.Year ~ Date.Month, data = train, 
+        #family = "binomial")
+    #probs10 <- predict(fit10, newdata = test, type = "response")
+    #diags <- rbind(diags, class_diag(probs10, truth2))
+#}
+#diags %>% summarize_all(mean)
+
+```
+
+According to the results, the logistic regression using the binary variable got acc of 1, sensitivity value of 1, specificity of 1, and PPV of 1. The 10 fold CV models were the same. The one variable that was retained was Date.Month. 
+
+
+
+
+
+

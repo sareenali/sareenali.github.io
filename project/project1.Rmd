@@ -1,0 +1,270 @@
+---
+title: 'Project 1: Exploratory Data Analysis'
+author: "SDS348"
+date: '2021-04-06'
+output:
+  html_document:
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+  pdf_document:
+    toc: no
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE, fig.align = "center", warning = F, message = F,
+tidy=TRUE, tidy.opts=list(width.cutoff=60), R.options=list(max.print=100))
+```
+
+What data did I use? 
+
+```{r}
+#Data 
+library(tidyverse)
+library(readr)
+state_population <- read_csv("https://raw.githubusercontent.com/jakevdp/data-USstates/master/state-population.csv")
+
+key<- read_csv("https://raw.githubusercontent.com/jasonong/List-of-US-States/master/states.csv")
+
+good <- full_join(key, state_population, by=c("Abbreviation"="state/region")) 
+
+state_areas <- read_csv("https://raw.githubusercontent.com/jakevdp/data-USstates/master/state-areas.csv")
+```
+
+
+```{r}
+#Joining Datasets
+
+MERGED <- full_join(good, state_areas, by=c("State"="state"))
+
+# To join my two datasets, I used the dplyr join function "full join". I chose to use full join because I didn't want any rows dropped and for all of the original data to be retained. 
+```
+
+
+
+
+```{r}
+
+#Introduction
+
+## I was looking for two datasets that had a common variable of states. I was searching the internet and #I found one dataset titled state_population, which contains state/region, ages, and within that column 
+#there is ages under 18 and total, years, and lastly population numbers. Then, I wanted to find another 
+#dataset that also had the states variable and I found the dataset titled state_areas. This dataset has 
+#states in the first column and area in square miles in the second column. I thought this would be 
+#interesting to see if theres any associations between the area of a state and the number of people in 
+#that state that are under 18 or older. I definitely think the higher the area of a state, the higher 
+#the population in that state will be. 
+
+```
+
+
+
+```{r}
+#Tidying
+
+tidy <- good %>% pivot_wider(names_from = "ages", values_from = "population") 
+tidy %>% pivot_longer(c("under18", "total"), names_to="ages", values_to="population") 
+
+tidy2 <- state_areas %>% pivot_wider(names_from = "state", values_from= "area (sq. mi)")
+tidy2 %>% pivot_longer(everything(), names_to="state")
+
+# On each dataset, I first used pivot wider to make them untidy. Then, I used pivot longer to tidy them again, where each observation has its own row and every variable has its own column. 
+```
+
+
+
+```{r}
+#Wrangling 
+
+#Population variable 
+
+mutate(MERGED, new = population / year)
+MERGED %>% mutate(meanp=mean(population, na.rm=T))
+
+MERGED %>% summarise(meanpopulaton=mean(population, na.rm=T)) 
+MERGED %>% filter(population < mean(population, na.rm=T)) 
+MERGED %>% filter(population > mean(population, na.rm=T))
+MERGED %>% filter(population < mean(population, na.rm=T)) %>% select(State)
+MERGED %>% filter(population > mean(population, na.rm=T)) %>% select(State)
+
+MERGED %>% summarise(sdpop=sd(population, na.rm=T))
+MERGED %>% filter(population < sd(population, na.rm=T))
+MERGED %>% filter(population > sd(population, na.rm=T))
+MERGED %>% filter(population < sd(population, na.rm=T)) %>% select(State)
+MERGED %>% filter(population > sd(population, na.rm=T)) %>% select(State)
+
+MERGED %>% summarise(minpop=min(population, na.rm=T))
+MERGED %>% filter(population < min(population, na.rm=T))
+MERGED %>% filter(population > min(population, na.rm=T))
+MERGED %>% filter(population < min(population, na.rm=T)) %>% select(State)
+MERGED %>% filter(population > min(population, na.rm=T)) %>% select(State)
+
+MERGED %>% summarise(maxpop=max(population, na.rm=T))
+MERGED %>% filter(population < max(population, na.rm=T))
+MERGED %>% filter(population > max(population, na.rm=T))
+MERGED %>% filter(population < max(population, na.rm=T)) %>% select(State)
+MERGED %>% filter(population > max(population, na.rm=T)) %>% select(State)
+
+MERGED %>% summarise(distpop=n_distinct(population, na.rm=T))
+
+HI <- MERGED %>%
+  group_by(State) %>% 
+  summarise(meanpopulation = mean(population, na.rm = TRUE),
+            sdpop = sd(population, na.rm = TRUE), 
+            minpop = min(population, na.rm=T), 
+            maxpop = max(population, na.rm=T)) %>% view()
+            
+MERGED %>% arrange(population) %>% head()
+MERGED %>% arrange('area (sq. mi)') %>% head()
+MERGED %>% arrange(year) %>% head()
+
+#Area (sq. mi)
+
+MERGED %>%
+  group_by(State) %>%
+  summarise(mean = mean('area (sq. mi)'), n = n())
+
+mean(MERGED$'area (sq. mi)', na.rm=T)
+sd(MERGED$'area (sq. mi)', na.rm=T)
+var(MERGED$'area (sq. mi)', na.rm=T)
+n_distinct(MERGED$'area (sq. mi)', na.rm=T)
+min(MERGED$'area (sq. mi)', na.rm=T)
+max(MERGED$'area (sq. mi)', na.rm=T)
+
+#Year
+
+MERGED %>% summarise(meanyear=mean(year, na.rm=T))
+
+MERGED %>% summarise(sdyear=sd(year, na.rm=T))
+
+MERGED %>% summarise(minyear=min(year, na.rm=T))
+
+MERGED %>% summarise(maxyear=max(year, na.rm=T))
+
+MERGED %>% summarise(varyear=var(year, na.rm=T))
+
+mean(MERGED$year, na.rm=T)
+sd(MERGED$year, na.rm=T)
+var(MERGED$year, na.rm=T)
+n_distinct(MERGED$year, na.rm=T)
+min(MERGED$year, na.rm=T)
+max(MERGED$year, na.rm=T)
+
+HI2 <- MERGED %>% 
+  group_by(State) %>% 
+  summarise(meanyear = mean(year, na.rm=T), 
+  sdyear = sd(year, na.rm=T), 
+  minyear=min(year, na.rm=T), 
+  maxyear=max(year, na.rm=T)) %>% view()
+  
+HI3 <- MERGED %>% 
+  group_by(State, ages) %>%
+  summarise(meanyear = mean(year, na.rm=T), 
+  sdyear = sd(year, na.rm=T), 
+  minyear=min(year, na.rm=T), 
+  maxyear=max(year, na.rm=T)) %>% view()
+
+library(purrr)
+MERGED %>% split(MERGED$ages) %>% map(summary)
+
+# For each variable I attempted to use as many different ways as I could to find various summary statistics. I also tried to have at least 5 different summary statistics. For population, I found the mean, the standard deviation, minimum, maximum, and the number of distinct populations there were. I did this in multiple ways, using filter, summarise, group_by, arrange, etc. Then, I found the same summary statistics of the area, in square miles, variable. Lastly, I found the same for year but I again used several different methods. I used summarise alone and also with group_by. 
+```
+
+
+
+```{r}
+#Visualizing
+
+cormat <- MERGED %>% select_if(is.numeric) %>% cor(use="pair")
+
+tidycor <- cormat %>% as.data.frame %>% rownames_to_column("var1") %>% 
+    pivot_longer(-1, names_to = "var2", values_to = "correlation")
+tidycor %>% ggplot(aes(var1, var2, fill = correlation)) + geom_tile() + 
+    scale_fill_gradient2(low = "yellow", high = "red") + theme(axis.text.x = element_text(angle = 90, 
+    hjust = 1)) + geom_text(aes(label = round(correlation, 2))) + 
+    coord_fixed()
+
+# This graph has different colors on it to show if there's any patterns in correlation values for multiple variables. The darker the red, the more of a correalation the two variables had. My graph, however, showed only strong correlations between the variable against itself. Of course a variable has a strong correlation with itself. No other variables, however had strong correlations with one another. 
+```
+
+
+
+```{r}
+ggplot(MERGED, aes(x = year, y = population))+
+geom_bar(stat="summary",fun=mean)+
+geom_errorbar(stat="summary", fun.data=mean_se)+
+ggtitle("Population per year") 
+
+ggplot() + geom_point(data = MERGED, aes(x = year, y = population, color = State)) +
+ggtitle("Population per year of each state")
+
+# This graph showed that for each state, as the years increased, population numbers also increased for the most part. The higher population numbers on my graph were region values. The rest were all pretty close to one another.
+```
+
+
+
+```{r}
+library(tidyverse)
+ggplot() + geom_point(data = MERGED, aes(x = ages, y = population, color = State)) + 
+ggtitle("Ages of the population in each state")
+
+ggplot(MERGED, aes(x = ages, y = population, fill = State))+
+geom_bar(stat="summary",fun=mean)+
+geom_errorbar(stat="summary", fun.data=mean_se)+
+ggtitle("Ages of the population in each state") +
+scale_y_continuous(limits=c(0,500000000))
+```
+
+
+```{r}
+# This graph showed for each state, ages which consisted of two categories, total and under 18, and population numbers. It showed that there was a greater number of people that were over the age of 18, than under 18. 
+```
+
+
+```{r}
+#Dimensionality Reduction 
+
+MERGED2 <- na.omit(MERGED)
+mypr <- prcomp(MERGED2[4:6], scale = TRUE)
+mypr
+summary(mypr)
+plot(mypr, type = "l")
+biplot(mypr, scale=0)
+
+str(mypr)
+mypr$x
+MERGED <- na.omit(MERGED)
+MERGED2 <- cbind(MERGED, mypr$x[,1:2])
+
+head(MERGED2)
+
+library(ggplot2)
+
+ggplot(MERGED2, aes(PC1, PC2, col = Abbreviation, fill = Abbreviation)) +
+  stat_ellipse(geom = "polygon", col = "black", alpha = 0.5) +
+  geom_point(shape = 21, col = "black")
+  
+cor(MERGED[4:6], MERGED2[7:8])
+
+# This showed that the correlation between population and PC3 was the highest. Then, there were negative correlations between year and PC1, population and PC1, which actually had a high negative correlation, area and PC1, area and PC2, year and PC3, and area and PC3. When the correlation is high and positive it means that as the value for an observsation increases along the principal component, so does for example the population because it had a value of 0.7. With a negative correaltion, as one increases, the other decreases. If the value is small, that indicates there's no real correlation, as shown with the PC2. 
+```
+
+
+
+```{r eval=F}
+## paste this chunk into the ```{r setup} chunk at the top of your project 1 .Rmd file
+
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE, fig.align = "center", warning = F, message = F,
+tidy=TRUE, tidy.opts=list(width.cutoff=60), R.options=list(max.print=100))
+```
+
+
+
+
+...
+
+
+
+
+
