@@ -1,0 +1,84 @@
+---
+title: 'Using R and Python Together '
+author: ''
+date: '2021-05-08'
+slug: using-r-and-python-together
+categories: []
+tags: []
+description: ''
+---
+
+Have you ever wanted to see how a word looks scrambled up? Maybe not, but STILL python can do this. 
+
+```{python}
+first = "Sareen" 
+last = "Ali"
+
+first + last
+
+last[0]+first[1:]+ ' ' +first[0]+last[1:]
+2*(first[0:4]+last[-4:])
+
+
+```
+It's kinda funny. 
+
+Here's how the two interact 
+
+```{r}
+# R chunk 
+heyy <- "Hey there"
+```
+
+
+```{r}
+library(reticulate)
+```
+
+
+```{python}
+#Python Code Chunk 
+
+hey = "people" 
+print(r.heyy,hey)
+```
+```{r}
+#R chunk 
+cat(c(heyy,py$hey))
+```
+Here's an example from the slides using numbers. 
+
+We wanted to take mat1 from python and, in R, compute the inverse. Then, we wanted to send it back to python, and multiply it with mat1. 
+
+
+```{python}
+#Python Code Chunk 
+import numpy as np
+x=np.array([1,2,3])
+mat1=np.array([[1,2],[3,4]])
+```
+
+
+```{r}
+#R Code Chunk 
+mat2<- solve(py$mat1)
+mat2
+```
+```{python}
+#Python Code Chunk 
+np.dot(mat1,r.mat2).round()
+```
+And, it worked!!
+
+## Here's a pic of a kitten that I think is so adorable!! :')
+![](/post/2021-05-08-using-r-and-python-together_files/kitty.jpg)
+
+[Link to project 1](/project/project1/)
+
+[Link to google](https://www.google.com)
+
+
+
+
+
+
